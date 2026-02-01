@@ -1,8 +1,9 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { createStore } from './store';
 import { registerGlobalShortcuts, unregisterAllShortcuts } from './shortcuts';
+import { startRegionSelection, registerOverlayIPC, SelectionBounds } from './overlay';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -50,6 +51,28 @@ const createWindow = (): void => {
   }
 };
 
+const startCaptureWorkflow = async (): Promise<void> => {
+  console.log('Starting capture workflow...');
+
+  // Step 1: Region selection
+  const bounds = await startRegionSelection();
+
+  if (!bounds) {
+    console.log('Capture cancelled');
+    return;
+  }
+
+  console.log('Selected region:', bounds);
+
+  // Step 2: Countdown (TODO: implement in issue #7)
+  // Step 3: Recording (TODO: implement in issue #8)
+  // Step 4: Encoding (TODO: implement in issue #9)
+  // Step 5: Upload (TODO: implement in issue #10)
+
+  // For now, just log the selection
+  console.log(`Capture region: ${bounds.width}x${bounds.height} at (${bounds.x}, ${bounds.y})`);
+};
+
 const createTray = (): void => {
   // Create a simple 16x16 tray icon
   const icon = nativeImage.createEmpty();
@@ -62,8 +85,7 @@ const createTray = (): void => {
       label: 'Start Capture',
       accelerator: store.get('hotkeys.startCapture', 'CommandOrControl+Shift+G'),
       click: () => {
-        console.log('Start capture clicked');
-        // TODO: Implement capture workflow
+        startCaptureWorkflow();
       },
     },
     { type: 'separator' },
@@ -98,10 +120,32 @@ const createTray = (): void => {
   });
 };
 
+// Register IPC handlers
+const registerIPC = (): void => {
+  // Overlay IPC
+  registerOverlayIPC();
+
+  // Capture IPC
+  ipcMain.handle('capture:start', async () => {
+    await startCaptureWorkflow();
+  });
+
+  // Window IPC
+  ipcMain.on('window:hide', () => {
+    mainWindow?.hide();
+  });
+
+  ipcMain.on('window:show', () => {
+    mainWindow?.show();
+    mainWindow?.focus();
+  });
+};
+
 app.whenReady().then(() => {
+  registerIPC();
   createWindow();
   createTray();
-  registerGlobalShortcuts(store);
+  registerGlobalShortcuts(store, startCaptureWorkflow);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

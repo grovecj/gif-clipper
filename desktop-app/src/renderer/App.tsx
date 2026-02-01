@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import SelectionOverlay from './components/SelectionOverlay';
+import './components/SelectionOverlay.css';
 
-const App: React.FC = () => {
+const MainApp: React.FC = () => {
   const handleStartCapture = () => {
     window.electronAPI.startCapture();
   };
@@ -35,6 +37,26 @@ const App: React.FC = () => {
       </footer>
     </div>
   );
+};
+
+const App: React.FC = () => {
+  const [route, setRoute] = useState(window.location.hash);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setRoute(window.location.hash);
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Route based on hash
+  if (route === '#/overlay') {
+    return <SelectionOverlay />;
+  }
+
+  return <MainApp />;
 };
 
 export default App;

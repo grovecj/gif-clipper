@@ -1,5 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+interface SelectionBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  displayId: number;
+}
+
 // Expose protected methods that allow the renderer process to use
 // ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -18,6 +26,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // App info
   getVersion: () => ipcRenderer.invoke('app:version'),
 
+  // Overlay actions
+  completeOverlay: (bounds: SelectionBounds) => ipcRenderer.invoke('overlay:complete', bounds),
+  cancelOverlay: () => ipcRenderer.invoke('overlay:cancel'),
+
   // Event listeners
   onCaptureStart: (callback: () => void) => {
     ipcRenderer.on('capture:started', callback);
@@ -30,6 +42,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onCaptureError: (callback: (error: string) => void) => {
     ipcRenderer.on('capture:error', (_event, error) => callback(error));
     return () => ipcRenderer.removeListener('capture:error', () => {});
+  },
+  onOverlayInit: (callback: (event: unknown, data: unknown) => void) => {
+    ipcRenderer.on('overlay:init', callback);
+    return () => ipcRenderer.removeListener('overlay:init', callback);
   },
 });
 
@@ -44,9 +60,12 @@ declare global {
       hideWindow: () => void;
       showWindow: () => void;
       getVersion: () => Promise<string>;
+      completeOverlay: (bounds: SelectionBounds) => Promise<void>;
+      cancelOverlay: () => Promise<void>;
       onCaptureStart: (callback: () => void) => () => void;
       onCaptureComplete: (callback: (url: string) => void) => () => void;
       onCaptureError: (callback: (error: string) => void) => () => void;
+      onOverlayInit: (callback: (event: unknown, data: unknown) => void) => () => void;
     };
   }
 }
