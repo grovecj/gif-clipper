@@ -1,0 +1,25 @@
+# Copy this file to application-local.yml and fill in your values
+# Run with: ./gradlew bootRun --args='--spring.profiles.active=local'
+
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/gifclipper;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  h2:
+    console:
+      enabled: true
+
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+spaces:
+  endpoint: https://nyc3.digitaloceanspaces.com
+  bucket: your-bucket-name
+  access-key: your-access-key
+  secret-key: your-secret-key
+  cdn-url: https://your-cdn-url.com

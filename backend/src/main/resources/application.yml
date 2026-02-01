@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: gif-clipper-api
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:h2:mem:gifclipper;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
+    username: ${DATABASE_USERNAME:sa}
+    password: ${DATABASE_PASSWORD:}
+    driver-class-name: ${DATABASE_DRIVER:org.h2.Driver}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: ${HIBERNATE_DIALECT:org.hibernate.dialect.H2Dialect}
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+  h2:
+    console:
+      enabled: ${H2_CONSOLE_ENABLED:false}
+      path: /h2-console
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+# DigitalOcean Spaces configuration
+spaces:
+  endpoint: ${DO_SPACES_ENDPOINT:https://nyc3.digitaloceanspaces.com}
+  bucket: ${DO_SPACES_BUCKET:gif-clipper-storage}
+  access-key: ${DO_SPACES_ACCESS_KEY:}
+  secret-key: ${DO_SPACES_SECRET_KEY:}
+  cdn-url: ${GIF_CDN_URL:}
+
+# Application configuration
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+  gif:
+    max-size-bytes: 52428800  # 50MB
+    allowed-content-types:
+      - image/gif
