@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gif-clipper-postgres
+    environment:
+      POSTGRES_USER: gifclipper
+      POSTGRES_PASSWORD: gifclipper
+      POSTGRES_DB: gifclipper
+    ports:
+      - "5433:5432"
+    volumes:
+      - gif-clipper-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gifclipper"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  gif-clipper-postgres-data:

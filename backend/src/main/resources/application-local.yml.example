@@ -1,25 +1,30 @@
-# Copy this file to application-local.yml and fill in your values
+# Copy this file to application-local.yml
 # Run with: ./gradlew bootRun --args='--spring.profiles.active=local'
 
 spring:
   datasource:
-    url: jdbc:h2:file:./data/gifclipper;DB_CLOSE_DELAY=-1
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
-
-  h2:
-    console:
-      enabled: true
+    url: jdbc:postgresql://localhost:5433/gifclipper
+    username: gifclipper
+    password: gifclipper
+    driver-class-name: org.postgresql.Driver
 
   jpa:
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
+  h2:
+    console:
+      enabled: false
+
+# For local development, use placeholder values for Spaces
+# Real uploads won't work without valid credentials
 spaces:
   endpoint: https://nyc3.digitaloceanspaces.com
-  bucket: your-bucket-name
-  access-key: your-access-key
-  secret-key: your-secret-key
-  cdn-url: https://your-cdn-url.com
+  bucket: gif-clipper-dev
+  access-key: ${DO_SPACES_ACCESS_KEY:local-dev-key}
+  secret-key: ${DO_SPACES_SECRET_KEY:local-dev-secret}
+  cdn-url: http://localhost:8080/gifs
+
+app:
+  base-url: http://localhost:8080
