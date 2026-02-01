@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title th:text="${gif.originalFilename != null ? gif.originalFilename : 'GIF'} + ' - Gif Clipper'">GIF - Gif Clipper</title>
+
+    <!-- Open Graph meta tags for social sharing -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" th:content="${gif.originalFilename != null ? gif.originalFilename : 'Shared GIF'}">
+    <meta property="og:description" th:content="'View this GIF (' + ${fileSizeFormatted} + ')'">
+    <meta property="og:image" th:content="${cdnUrl}">
+    <meta property="og:image:type" content="image/gif">
+    <meta property="og:url" th:content="${shareUrl}">
+    <meta property="og:site_name" content="Gif Clipper">
+
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" th:content="${gif.originalFilename != null ? gif.originalFilename : 'Shared GIF'}">
+    <meta name="twitter:description" th:content="'View this GIF (' + ${fileSizeFormatted} + ')'">
+    <meta name="twitter:image" th:content="${cdnUrl}">
+
+    <link rel="stylesheet" href="/css/viewer.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="logo">Gif Clipper</h1>
+        </header>
+
+        <main>
+            <div class="gif-container">
+                <img th:src="${cdnUrl}"
+                     th:alt="${gif.originalFilename}"
+                     class="gif-image"
+                     loading="eager">
+            </div>
+
+            <div class="gif-info">
+                <div class="info-row">
+                    <span class="label">Size:</span>
+                    <span class="value" th:text="${fileSizeFormatted}">1.2 MB</span>
+                </div>
+                <div class="info-row" th:if="${gif.width != null and gif.height != null}">
+                    <span class="label">Dimensions:</span>
+                    <span class="value" th:text="${gif.width} + ' × ' + ${gif.height}">640 × 480</span>
+                </div>
+                <div class="info-row" th:if="${gif.durationMs != null}">
+                    <span class="label">Duration:</span>
+                    <span class="value" th:text="${#numbers.formatDecimal(gif.durationMs / 1000.0, 1, 1)} + 's'">2.5s</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Views:</span>
+                    <span class="value" th:text="${gif.viewCount}">123</span>
+                </div>
+            </div>
+
+            <div class="actions">
+                <a th:href="${cdnUrl}" download class="btn btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7,10 12,15 17,10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download
+                </a>
+                <button class="btn btn-secondary" onclick="copyLink()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                    Copy Link
+                </button>
+            </div>
+
+            <div id="copy-toast" class="toast hidden">Link copied to clipboard!</div>
+        </main>
+
+        <footer>
+            <p>Created with <a href="https://github.com/grovecj/gif-clipper">Gif Clipper</a></p>
+        </footer>
+    </div>
+
+    <script th:inline="javascript">
+        const shareUrl = [[${shareUrl}]];
+
+        function copyLink() {
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                const toast = document.getElementById('copy-toast');
+                toast.classList.remove('hidden');
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = shareUrl;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            });
+        }
+    </script>
+</body>
+</html>
