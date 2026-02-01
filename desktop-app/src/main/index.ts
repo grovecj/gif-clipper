@@ -93,8 +93,9 @@ const startCaptureWorkflow = async (): Promise<void> => {
 };
 
 const createTray = (): void => {
-  // Create a simple 16x16 tray icon
-  const icon = nativeImage.createEmpty();
+  // Create a simple 16x16 tray icon (purple circle for GIF Clipper)
+  const iconDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAbwAAAG8B8aLcQwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAEPSURBVDiNpZMxTsNAEEXfbNaWHCkFBRIdN0DiCJRcgCNwFU5AR0OBkEIRxSaK5V3PUNhxHAfISDv6M/P/zO6MYOLJl9lOcQ0sgVCX+RX4BN6B1+TUHlKBiHwDN8ADsKrLvAX2wBNwByTgK9lRgcFHYB4/gDBsWJf5ATh6BubA/Z8Gv/k2cwNc9sDJcKh/qNp8A5aBPdPx8OGcvAYum5N5d0o/4Dha4BqVr7T0S9zY6kbMv7Nz0pMbFyqWmWXztzqdTrsA8k5m2VCH9KMOT0Ak7u+k+yQJAAAA8A0Adtv0BADiMHABfAzn5EnwCViYAHhzqLpz8ySJw5QA+HIo5d4xfgGrQPLmUPWgc/IJeAa+gL0J8A2EPTSfChZhEgAAAABJRU5ErkJggg==';
+  const icon = nativeImage.createFromDataURL(iconDataUrl);
 
   tray = new Tray(icon);
   tray.setToolTip('Gif Clipper');

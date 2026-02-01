@@ -53,13 +53,6 @@ resource "digitalocean_spaces_bucket" "gifs" {
   region = var.spaces_region
   acl    = "public-read"
 
-  cors_rule {
-    allowed_headers = ["*"]
-    allowed_methods = ["GET", "HEAD"]
-    allowed_origins = ["*"]
-    max_age_seconds = 3600
-  }
-
   lifecycle_rule {
     enabled = true
 
@@ -67,6 +60,18 @@ resource "digitalocean_spaces_bucket" "gifs" {
     expiration {
       days = var.gif_retention_days
     }
+  }
+}
+
+resource "digitalocean_spaces_bucket_cors_configuration" "gifs" {
+  bucket = digitalocean_spaces_bucket.gifs.id
+  region = var.spaces_region
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD"]
+    allowed_origins = ["*"]
+    max_age_seconds = 3600
   }
 }
 

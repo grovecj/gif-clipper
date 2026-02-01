@@ -21,5 +21,10 @@ export const registerGlobalShortcuts = (
 };
 
 export const unregisterAllShortcuts = (): void => {
-  globalShortcut.unregisterAll();
+  // Only unregister if app is ready (globalShortcut requires app to be ready)
+  try {
+    globalShortcut.unregisterAll();
+  } catch {
+    // Ignore errors if app wasn't ready
+  }
 };

@@ -20,13 +20,19 @@ export const createOverlayWindow = (): BrowserWindow => {
   const displays = screen.getAllDisplays();
   const combinedBounds = getCombinedDisplayBounds(displays);
 
+  console.log('Creating overlay window with bounds:', combinedBounds);
+
+  // On Linux/WSL, transparent windows may not work properly
+  const isLinux = process.platform === 'linux';
+
   overlayWindow = new BrowserWindow({
     x: combinedBounds.x,
     y: combinedBounds.y,
     width: combinedBounds.width,
     height: combinedBounds.height,
     frame: false,
-    transparent: true,
+    transparent: !isLinux, // Disable transparency on Linux/WSL
+    backgroundColor: isLinux ? '#01000000' : undefined, // Near-transparent black on Linux
     alwaysOnTop: true,
     skipTaskbar: true,
     resizable: false,
@@ -44,6 +50,8 @@ export const createOverlayWindow = (): BrowserWindow => {
     },
   });
 
+  console.log('Overlay window created, loading URL...');
+
   // Load the overlay page
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     overlayWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}#/overlay`);
@@ -56,6 +64,7 @@ export const createOverlayWindow = (): BrowserWindow => {
 
   // Send display info to the overlay
   overlayWindow.webContents.on('did-finish-load', () => {
+    console.log('Overlay window loaded, sending init data');
     overlayWindow?.webContents.send('overlay:init', {
       displays: displays.map(d => ({
         id: d.id,
@@ -64,6 +73,8 @@ export const createOverlayWindow = (): BrowserWindow => {
       })),
       combinedBounds,
     });
+    overlayWindow?.show();
+    overlayWindow?.focus();
   });
 
   overlayWindow.on('closed', () => {
