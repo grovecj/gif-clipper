@@ -1,0 +1,53 @@
+# =============================================================================
+# Provider Credentials
+# =============================================================================
+
+# DigitalOcean API token (create at https://cloud.digitalocean.com/account/api/tokens)
+do_token = "dop_v1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# DigitalOcean Spaces credentials (create at https://cloud.digitalocean.com/account/api/spaces)
+do_spaces_access_id  = "DO00XXXXXXXXXXXXXXXX"
+do_spaces_secret_key = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# GitHub personal access token with 'repo' scope
+github_token = "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+github_owner = "your-github-username"
+
+# =============================================================================
+# Domain Configuration
+# =============================================================================
+
+# Your base domain (must be managed in DigitalOcean DNS)
+base_domain = "cartergrove.me"
+
+# Custom domains (leave empty to use default DO domains)
+api_custom_domain = "gif-api.cartergrove.me"
+cdn_custom_domain = "gif.cartergrove.me"
+
+# If using cdn_custom_domain, you need an SSL certificate
+# Create one at: https://cloud.digitalocean.com/networking/certificates
+cdn_certificate_name = "cartergrove-me-cert"
+
+# =============================================================================
+# Shared Resources
+# =============================================================================
+
+# Name of the existing PostgreSQL cluster (from mlb-stats terraform)
+shared_db_cluster_name = "mlb-stats-db"
+
+# =============================================================================
+# Application Settings
+# =============================================================================
+
+app_name       = "gif-clipper"
+region         = "nyc"
+instance_size  = "basic-xxs"
+instance_count = 1
+
+# =============================================================================
+# Storage Settings
+# =============================================================================
+
+spaces_bucket_name = "gif-clipper-storage"
+spaces_region      = "nyc3"
+gif_retention_days = 365  # Set to 0 for indefinite retention
