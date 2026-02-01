@@ -30,6 +30,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   completeOverlay: (bounds: SelectionBounds) => ipcRenderer.invoke('overlay:complete', bounds),
   cancelOverlay: () => ipcRenderer.invoke('overlay:cancel'),
 
+  // Countdown actions
+  completeCountdown: () => ipcRenderer.invoke('countdown:complete'),
+  cancelCountdown: () => ipcRenderer.invoke('countdown:cancel'),
+
   // Event listeners
   onCaptureStart: (callback: () => void) => {
     ipcRenderer.on('capture:started', callback);
@@ -47,6 +51,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('overlay:init', callback);
     return () => ipcRenderer.removeListener('overlay:init', callback);
   },
+  onCountdownInit: (callback: (event: unknown, data: { duration: number }) => void) => {
+    ipcRenderer.on('countdown:init', callback);
+    return () => ipcRenderer.removeListener('countdown:init', callback);
+  },
 });
 
 // Type declarations for the exposed API
@@ -62,10 +70,13 @@ declare global {
       getVersion: () => Promise<string>;
       completeOverlay: (bounds: SelectionBounds) => Promise<void>;
       cancelOverlay: () => Promise<void>;
+      completeCountdown: () => Promise<void>;
+      cancelCountdown: () => Promise<void>;
       onCaptureStart: (callback: () => void) => () => void;
       onCaptureComplete: (callback: (url: string) => void) => () => void;
       onCaptureError: (callback: (error: string) => void) => () => void;
       onOverlayInit: (callback: (event: unknown, data: unknown) => void) => () => void;
+      onCountdownInit: (callback: (event: unknown, data: { duration: number }) => void) => () => void;
     };
   }
 }

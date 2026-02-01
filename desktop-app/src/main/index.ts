@@ -3,7 +3,8 @@ import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { createStore } from './store';
 import { registerGlobalShortcuts, unregisterAllShortcuts } from './shortcuts';
-import { startRegionSelection, registerOverlayIPC, SelectionBounds } from './overlay';
+import { startRegionSelection, registerOverlayIPC } from './overlay';
+import { showCountdown } from './countdown';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -58,19 +59,37 @@ const startCaptureWorkflow = async (): Promise<void> => {
   const bounds = await startRegionSelection();
 
   if (!bounds) {
-    console.log('Capture cancelled');
+    console.log('Capture cancelled during region selection');
     return;
   }
 
   console.log('Selected region:', bounds);
 
-  // Step 2: Countdown (TODO: implement in issue #7)
+  // Step 2: Countdown
+  const countdownDuration = store.get('countdown.duration', 3);
+
+  if (countdownDuration > 0) {
+    const countdownCompleted = await new Promise<boolean>((resolve) => {
+      showCountdown({
+        bounds,
+        duration: countdownDuration,
+        onComplete: () => resolve(true),
+        onCancel: () => resolve(false),
+      });
+    });
+
+    if (!countdownCompleted) {
+      console.log('Capture cancelled during countdown');
+      return;
+    }
+  }
+
+  console.log('Countdown complete, ready to record');
+  console.log(`Capture region: ${bounds.width}x${bounds.height} at (${bounds.x}, ${bounds.y})`);
+
   // Step 3: Recording (TODO: implement in issue #8)
   // Step 4: Encoding (TODO: implement in issue #9)
   // Step 5: Upload (TODO: implement in issue #10)
-
-  // For now, just log the selection
-  console.log(`Capture region: ${bounds.width}x${bounds.height} at (${bounds.x}, ${bounds.y})`);
 };
 
 const createTray = (): void => {

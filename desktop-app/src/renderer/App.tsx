@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import SelectionOverlay from './components/SelectionOverlay';
+import Countdown from './components/Countdown';
 import './components/SelectionOverlay.css';
+import './components/Countdown.css';
 
 const MainApp: React.FC = () => {
   const handleStartCapture = () => {
@@ -54,6 +56,10 @@ const App: React.FC = () => {
   // Route based on hash
   if (route === '#/overlay') {
     return <SelectionOverlay />;
+  }
+
+  if (route === '#/countdown') {
+    return <Countdown />;
   }
 
   return <MainApp />;
