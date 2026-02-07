@@ -33,7 +33,7 @@ gif-clipper/
 ```bash
 cd desktop-app
 npm install
-npm run dev          # Start development mode
+npm start            # Start development mode
 npm run build        # Build for production
 npm run make         # Create distributable packages
 ```
