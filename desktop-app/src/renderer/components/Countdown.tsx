@@ -5,18 +5,47 @@ const Countdown: React.FC = () => {
   const [count, setCount] = useState<number | null>(null);
   const [isComplete, setIsComplete] = useState(false);
 
+  // Make body transparent so the transparent BrowserWindow works
   useEffect(() => {
-    // Listen for initialization
-    const handleInit = (_event: unknown, data: { duration: number }) => {
-      setCount(data.duration);
+    document.body.style.backgroundColor = 'transparent';
+  }, []);
+
+  useEffect(() => {
+    // Poll for init data injected via executeJavaScript
+    const checkForInjectedData = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = (window as any).__countdownInitData as { duration: number } | undefined;
+      if (data) {
+        console.log('Found __countdownInitData:', data.duration);
+        setCount(data.duration);
+        return true;
+      }
+      return false;
     };
 
-    window.electronAPI.onCountdownInit(handleInit);
+    if (!checkForInjectedData()) {
+      const timer = setInterval(() => {
+        if (checkForInjectedData()) clearInterval(timer);
+      }, 50);
+      setTimeout(() => clearInterval(timer), 3000);
+    }
+
+    // Also try IPC if available
+    if (window.electronAPI) {
+      window.electronAPI.onCountdownInit((_event: unknown, data: { duration: number }) => {
+        setCount(data.duration);
+      });
+    }
 
     // Handle escape key
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        window.electronAPI.cancelCountdown();
+        if (window.electronAPI) {
+          window.electronAPI.cancelCountdown();
+        } else {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (window as any).__countdownResult = 'cancel';
+        }
       }
     };
 
@@ -35,7 +64,12 @@ const Countdown: React.FC = () => {
       setIsComplete(true);
       // Small delay before completing to show "Recording" state
       const timeout = setTimeout(() => {
-        window.electronAPI.completeCountdown();
+        if (window.electronAPI) {
+          window.electronAPI.completeCountdown();
+        } else {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (window as any).__countdownResult = 'complete';
+        }
       }, 500);
       return () => clearTimeout(timeout);
     }

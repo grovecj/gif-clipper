@@ -104,10 +104,11 @@ const startCaptureWorkflow = async (): Promise<void> => {
     stopRecording();
   });
 
+  let videoPath: string;
   try {
     // Step 3: Recording
     console.log(`Starting recording at ${fps} fps, max ${maxDuration}s...`);
-    const videoPath = await startRecording({
+    videoPath = await startRecording({
       x: bounds.x,
       y: bounds.y,
       width: bounds.width,
@@ -116,7 +117,21 @@ const startCaptureWorkflow = async (): Promise<void> => {
       maxDuration,
     });
     console.log(`Recording saved: ${videoPath}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Recording failed:', message);
+    mainWindow?.webContents.send('capture:error', message);
+    return;
+  } finally {
+    // Close indicator and unregister stop key immediately after recording ends
+    closeRecordingIndicator();
+    if (globalShortcut.isRegistered(stopKey)) {
+      globalShortcut.unregister(stopKey);
+    }
+  }
 
+  // Steps 4 & 5 run in the background — no UI blocking
+  try {
     // Step 4: Encoding
     console.log('Encoding GIF...');
     const gifPath = await encodeGif(videoPath, fps);
@@ -166,11 +181,6 @@ const startCaptureWorkflow = async (): Promise<void> => {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Capture failed:', message);
     mainWindow?.webContents.send('capture:error', message);
-  } finally {
-    closeRecordingIndicator();
-    if (globalShortcut.isRegistered(stopKey)) {
-      globalShortcut.unregister(stopKey);
-    }
   }
 };
 
