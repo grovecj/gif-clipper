@@ -95,8 +95,12 @@ const startCaptureWorkflow = async (): Promise<void> => {
   const maxDuration = store.get('recording.maxDuration', 30);
 
   // Convert logical (DIP) coordinates to physical pixels for screen capture.
-  // Electron reports coordinates in DIP, but ffmpeg's gdigrab uses physical pixels.
-  const captureDisplay = screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y });
+  // Electron reports coordinates in DIP, but ffmpeg's screen-capture backends
+  // (e.g., gdigrab on Windows, avfoundation crop on macOS, x11grab on Linux)
+  // use physical pixels.
+  const captureDisplay =
+    screen.getAllDisplays().find((d) => d.id === bounds.displayId) ||
+    screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y });
   const scaleFactor = captureDisplay.scaleFactor || 1;
   const physicalBounds = {
     x: Math.round(bounds.x * scaleFactor),
