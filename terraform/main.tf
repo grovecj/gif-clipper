@@ -117,6 +117,7 @@ resource "digitalocean_app" "gif_clipper" {
         deploy_on_push = true
       }
 
+      source_dir      = "/backend"
       dockerfile_path = "backend/Dockerfile"
 
       health_check {
