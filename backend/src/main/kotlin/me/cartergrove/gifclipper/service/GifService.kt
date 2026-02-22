@@ -4,9 +4,12 @@ import me.cartergrove.gifclipper.config.AppProperties
 import me.cartergrove.gifclipper.domain.gif.Gif
 import me.cartergrove.gifclipper.domain.gif.GifRepository
 import org.slf4j.LoggerFactory
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 @Service
@@ -100,6 +103,25 @@ class GifService(
         return storageService.getCdnUrl(gif.storageKey)
     }
 
+    /**
+     * Find trending GIFs (most viewed in the last 7 days)
+     */
+    @Transactional(readOnly = true)
+    fun findTrending(limit: Int = 12): List<GifWithCdnUrl> {
+        val since = Instant.now().minus(7, ChronoUnit.DAYS)
+        return gifRepository.findTrending(since, PageRequest.of(0, limit))
+            .map { GifWithCdnUrl(it, getCdnUrl(it)) }
+    }
+
+    /**
+     * Find top GIFs by view count (all time)
+     */
+    @Transactional(readOnly = true)
+    fun findTopByViews(limit: Int = 12): List<GifWithCdnUrl> {
+        return gifRepository.findTopByViews(PageRequest.of(0, limit))
+            .map { GifWithCdnUrl(it, getCdnUrl(it)) }
+    }
+
     private fun validateFile(file: MultipartFile) {
         if (file.isEmpty) {
             throw IllegalArgumentException("File is empty")
@@ -124,3 +146,11 @@ class GifService(
         return "gifs/$id.$extension"
     }
 }
+
+/**
+ * Wrapper that pairs a Gif entity with its CDN URL for template rendering
+ */
+data class GifWithCdnUrl(
+    val gif: Gif,
+    val cdnUrl: String
+)
