@@ -43,7 +43,7 @@ const defaultSettings: AppSettings = {
     colors: 256,
   },
   upload: {
-    apiUrl: 'https://gif-api.cartergrove.me',
+    apiUrl: 'https://gif.cartergrove.me',
     copyToClipboard: true,
     showNotification: true,
     openInBrowser: false,
