@@ -216,6 +216,11 @@ body {
     background: #212c42;
     border-color: #334155;
 }
+.btn-download--disabled {
+    opacity: .45;
+    pointer-events: none;
+    cursor: default;
+}
 
 .hero-platforms {
     margin-top: 1.2rem;
