@@ -64,7 +64,10 @@ function readHwnd(buf: Buffer): number {
     return Number(buf.readBigUInt64LE(0));
   }
   // 32-bit fallback
-  return buf.readUInt32LE(0);
+  if (buf.length >= 4) {
+    return buf.readUInt32LE(0);
+  }
+  throw new Error(`Invalid native window handle buffer length: ${buf.length}`);
 }
 
 function rgb(r: number, g: number, b: number): number {

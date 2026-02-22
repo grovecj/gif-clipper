@@ -24,6 +24,11 @@ export function startRecording(options: RecordingOptions): Promise<string> {
     const w = width % 2 === 0 ? width : width + 1;
     const h = height % 2 === 0 ? height : height + 1;
 
+    if (w <= 0 || h <= 0) {
+      reject(new Error(`Recording dimensions must be positive, got ${w}x${h}`));
+      return;
+    }
+
     const tempDir = app.getPath('temp');
     const filename = `gif-clipper-${randomUUID()}.mp4`;
     currentRecordingPath = path.join(tempDir, filename);
@@ -108,12 +113,12 @@ export function stopRecording(): void {
     try {
       ffmpegProcess.stdin?.write('q\n');
       ffmpegProcess.stdin?.end();
-    } catch {
-      // Fallback: force kill
+    } catch (err) {
+      console.error('Failed to stop ffmpeg gracefully, force killing:', err);
       try {
         ffmpegProcess.kill();
-      } catch {
-        // Already dead
+      } catch (killErr) {
+        console.error('Failed to force kill ffmpeg:', killErr);
       }
     }
   }

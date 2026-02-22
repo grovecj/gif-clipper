@@ -130,7 +130,9 @@ const startCaptureWorkflow = async (): Promise<void> => {
     mainWindow?.webContents.send('capture:error', message);
   } finally {
     closeRecordingIndicator();
-    globalShortcut.unregister(stopKey);
+    if (globalShortcut.isRegistered(stopKey)) {
+      globalShortcut.unregister(stopKey);
+    }
   }
 };
 

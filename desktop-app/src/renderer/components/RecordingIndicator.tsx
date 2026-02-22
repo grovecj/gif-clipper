@@ -9,15 +9,17 @@ const RecordingIndicator: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setElapsed(Math.floor((Date.now() - startTime) / 1000));
-    }, 200);
+    }, 1000);
     return () => clearInterval(interval);
   }, [startTime]);
 
   // Escape key to stop
   useEffect(() => {
+    if (!window.electronAPI) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        window.electronAPI.stopCapture();
+        window.electronAPI?.stopCapture();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -25,7 +27,7 @@ const RecordingIndicator: React.FC = () => {
   }, []);
 
   const handleStop = useCallback(() => {
-    window.electronAPI.stopCapture();
+    window.electronAPI?.stopCapture();
   }, []);
 
   const formatTime = (seconds: number) => {

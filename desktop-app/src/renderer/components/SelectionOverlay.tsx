@@ -40,16 +40,12 @@ const SelectionOverlay: React.FC = () => {
   displaysRef.current = displays;
 
   useEffect(() => {
-    console.log('SelectionOverlay mounted, electronAPI available:', !!window.electronAPI);
-
     if (!window.electronAPI) {
-      console.error('window.electronAPI is undefined - preload script may not have loaded');
       return;
     }
 
     // Listen for initialization data from main process
     const handleInit = (_event: unknown, data: OverlayInitData) => {
-      console.log('OVERLAY INIT received:', data);
       setDisplays(data.displays);
       setCombinedBounds(data.combinedBounds);
     };
@@ -117,7 +113,6 @@ const SelectionOverlay: React.FC = () => {
     }
 
     if (!cb) {
-      console.warn('combinedBounds not yet available, cannot complete selection');
       setStartPoint(null);
       setCurrentPoint(null);
       return;

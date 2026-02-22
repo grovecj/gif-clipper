@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import { unlink } from 'node:fs/promises';
 import { getFfmpegPath } from './ffmpeg-path';
 
 export function encodeGif(inputPath: string, fps: number): Promise<string> {
@@ -32,6 +33,10 @@ export function encodeGif(inputPath: string, fps: number): Promise<string> {
     ffmpeg.on('close', (code) => {
       if (code === 0) {
         console.log(`GIF encoding complete: ${outputPath}`);
+        // Clean up the temporary video file
+        unlink(inputPath).catch((err) => {
+          console.error('Failed to clean up temp video file:', err);
+        });
         resolve(outputPath);
       } else {
         reject(new Error(`GIF encoding failed (code ${code}): ${stderr.slice(-500)}`));

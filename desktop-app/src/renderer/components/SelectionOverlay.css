@@ -22,8 +22,7 @@
 .selection-border {
   position: absolute;
   border: 2px solid #6366f1;
-  /* Magenta interior = color key for Win32 native transparency */
-  background-color: #ff00ff;
+  background-color: transparent;
   box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
   pointer-events: none;
   box-sizing: border-box;
