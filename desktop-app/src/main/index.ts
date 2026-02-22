@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, globalShortcut, clipboard, shell, Notification } from 'electron';
+import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, globalShortcut, clipboard, shell, Notification, screen } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { createStore } from './store';
@@ -94,6 +94,22 @@ const startCaptureWorkflow = async (): Promise<void> => {
   const fps = store.get('recording.fps', 15);
   const maxDuration = store.get('recording.maxDuration', 30);
 
+  // Convert logical (DIP) coordinates to physical pixels for screen capture.
+  // Electron reports coordinates in DIP, but ffmpeg's screen-capture backends
+  // (e.g., gdigrab on Windows, avfoundation crop on macOS, x11grab on Linux)
+  // use physical pixels.
+  const captureDisplay =
+    screen.getAllDisplays().find((d) => d.id === bounds.displayId) ||
+    screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y });
+  const scaleFactor = captureDisplay.scaleFactor || 1;
+  const physicalBounds = {
+    x: Math.round(bounds.x * scaleFactor),
+    y: Math.round(bounds.y * scaleFactor),
+    width: Math.round(bounds.width * scaleFactor),
+    height: Math.round(bounds.height * scaleFactor),
+  };
+  console.log(`Scale factor: ${scaleFactor}, physical region: ${physicalBounds.width}x${physicalBounds.height} at (${physicalBounds.x}, ${physicalBounds.y})`);
+
   // Notify renderer that capture has started
   mainWindow?.webContents.send('capture:started');
 
@@ -109,10 +125,10 @@ const startCaptureWorkflow = async (): Promise<void> => {
     // Step 3: Recording
     console.log(`Starting recording at ${fps} fps, max ${maxDuration}s...`);
     videoPath = await startRecording({
-      x: bounds.x,
-      y: bounds.y,
-      width: bounds.width,
-      height: bounds.height,
+      x: physicalBounds.x,
+      y: physicalBounds.y,
+      width: physicalBounds.width,
+      height: physicalBounds.height,
       fps,
       maxDuration,
     });
