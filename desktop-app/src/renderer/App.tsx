@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import SelectionOverlay from './components/SelectionOverlay';
 import Countdown from './components/Countdown';
+import RecordingIndicator from './components/RecordingIndicator';
 import './components/SelectionOverlay.css';
 import './components/Countdown.css';
+import './components/RecordingIndicator.css';
 
 const MainApp: React.FC = () => {
   const handleStartCapture = () => {
@@ -60,6 +62,10 @@ const App: React.FC = () => {
 
   if (route === '#/countdown') {
     return <Countdown />;
+  }
+
+  if (route === '#/recording') {
+    return <RecordingIndicator />;
   }
 
   return <MainApp />;

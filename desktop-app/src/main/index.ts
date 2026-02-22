@@ -1,10 +1,13 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } from 'electron';
+import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, globalShortcut } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { createStore } from './store';
 import { registerGlobalShortcuts, unregisterAllShortcuts } from './shortcuts';
 import { startRegionSelection, registerOverlayIPC } from './overlay';
 import { showCountdown } from './countdown';
+import { startRecording, stopRecording } from './recorder';
+import { encodeGif } from './encoder';
+import { showRecordingIndicator, closeRecordingIndicator } from './recording-indicator';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -87,9 +90,50 @@ const startCaptureWorkflow = async (): Promise<void> => {
   console.log('Countdown complete, ready to record');
   console.log(`Capture region: ${bounds.width}x${bounds.height} at (${bounds.x}, ${bounds.y})`);
 
-  // Step 3: Recording (TODO: implement in issue #8)
-  // Step 4: Encoding (TODO: implement in issue #9)
-  // Step 5: Upload (TODO: implement in issue #10)
+  const fps = store.get('recording.fps', 15);
+  const maxDuration = store.get('recording.maxDuration', 30);
+
+  // Notify renderer that capture has started
+  mainWindow?.webContents.send('capture:started');
+
+  // Show recording indicator and register Escape to stop
+  showRecordingIndicator(bounds);
+  const stopKey = store.get('hotkeys.stopCapture', 'Escape');
+  globalShortcut.register(stopKey, () => {
+    stopRecording();
+  });
+
+  try {
+    // Step 3: Recording
+    console.log(`Starting recording at ${fps} fps, max ${maxDuration}s...`);
+    const videoPath = await startRecording({
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      fps,
+      maxDuration,
+    });
+    console.log(`Recording saved: ${videoPath}`);
+
+    // Step 4: Encoding
+    console.log('Encoding GIF...');
+    const gifPath = await encodeGif(videoPath, fps);
+    console.log(`GIF encoded: ${gifPath}`);
+
+    // Step 5: Upload (TODO: implement in issue #10)
+    // For now, notify with the local file path
+    mainWindow?.webContents.send('capture:complete', gifPath);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Capture failed:', message);
+    mainWindow?.webContents.send('capture:error', message);
+  } finally {
+    closeRecordingIndicator();
+    if (globalShortcut.isRegistered(stopKey)) {
+      globalShortcut.unregister(stopKey);
+    }
+  }
 };
 
 const createTray = (): void => {
@@ -148,6 +192,10 @@ const registerIPC = (): void => {
   // Capture IPC
   ipcMain.handle('capture:start', async () => {
     await startCaptureWorkflow();
+  });
+
+  ipcMain.handle('capture:stop', () => {
+    stopRecording();
   });
 
   // Window IPC

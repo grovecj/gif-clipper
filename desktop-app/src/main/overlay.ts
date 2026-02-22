@@ -16,23 +16,20 @@ let overlayWindow: BrowserWindow | null = null;
 let selectionResolver: ((bounds: SelectionBounds | null) => void) | null = null;
 
 export const createOverlayWindow = (): BrowserWindow => {
-  // Get the combined bounds of all displays
-  const displays = screen.getAllDisplays();
-  const combinedBounds = getCombinedDisplayBounds(displays);
+  // Use the display where the cursor is currently located
+  const cursorPoint = screen.getCursorScreenPoint();
+  const activeDisplay = screen.getDisplayNearestPoint(cursorPoint);
+  const displayBounds = activeDisplay.bounds;
 
-  console.log('Creating overlay window with bounds:', combinedBounds);
-
-  // On Linux/WSL, transparent windows may not work properly
-  const isLinux = process.platform === 'linux';
+  console.log('Creating overlay window on display:', activeDisplay.id, 'bounds:', displayBounds);
 
   overlayWindow = new BrowserWindow({
-    x: combinedBounds.x,
-    y: combinedBounds.y,
-    width: combinedBounds.width,
-    height: combinedBounds.height,
+    x: displayBounds.x,
+    y: displayBounds.y,
+    width: displayBounds.width,
+    height: displayBounds.height,
     frame: false,
-    transparent: !isLinux, // Disable transparency on Linux/WSL
-    backgroundColor: isLinux ? '#01000000' : undefined, // Near-transparent black on Linux
+    show: false,
     alwaysOnTop: true,
     skipTaskbar: true,
     resizable: false,
@@ -65,14 +62,17 @@ export const createOverlayWindow = (): BrowserWindow => {
   // Send display info to the overlay
   overlayWindow.webContents.on('did-finish-load', () => {
     console.log('Overlay window loaded, sending init data');
+
     overlayWindow?.webContents.send('overlay:init', {
-      displays: displays.map(d => ({
-        id: d.id,
-        bounds: d.bounds,
-        scaleFactor: d.scaleFactor,
-      })),
-      combinedBounds,
+      displays: [{
+        id: activeDisplay.id,
+        bounds: activeDisplay.bounds,
+        scaleFactor: activeDisplay.scaleFactor,
+      }],
+      combinedBounds: displayBounds,
     });
+
+    overlayWindow?.setOpacity(0.5);
     overlayWindow?.show();
     overlayWindow?.focus();
   });
@@ -86,25 +86,6 @@ export const createOverlayWindow = (): BrowserWindow => {
   });
 
   return overlayWindow;
-};
-
-const getCombinedDisplayBounds = (displays: Electron.Display[]) => {
-  let minX = Infinity, minY = Infinity;
-  let maxX = -Infinity, maxY = -Infinity;
-
-  for (const display of displays) {
-    minX = Math.min(minX, display.bounds.x);
-    minY = Math.min(minY, display.bounds.y);
-    maxX = Math.max(maxX, display.bounds.x + display.bounds.width);
-    maxY = Math.max(maxY, display.bounds.y + display.bounds.height);
-  }
-
-  return {
-    x: minX,
-    y: minY,
-    width: maxX - minX,
-    height: maxY - minY,
-  };
 };
 
 export const startRegionSelection = (): Promise<SelectionBounds | null> => {
