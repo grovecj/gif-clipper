@@ -40,7 +40,8 @@ jobs:
         run: |
           INSTALLER=$(find out/make/squirrel.windows -name "*.exe" -path "*Setup*" | head -1)
           echo "path=$INSTALLER" >> "$GITHUB_OUTPUT"
-          echo "name=$(basename "$INSTALLER" | tr ' ' '.')" >> "$GITHUB_OUTPUT"
+          BASENAME=$(basename "$INSTALLER" | tr ' ' '.')
+          echo "name=$BASENAME" >> "$GITHUB_OUTPUT"
 
       - name: Check if release exists
         id: check_release

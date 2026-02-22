@@ -104,7 +104,7 @@ class GifService(
     }
 
     /**
-     * Find trending GIFs (most viewed in the last 7 days)
+     * Find trending GIFs (most viewed among those created in the last 7 days)
      */
     @Transactional(readOnly = true)
     fun findTrending(limit: Int = 12): List<GifWithCdnUrl> {
