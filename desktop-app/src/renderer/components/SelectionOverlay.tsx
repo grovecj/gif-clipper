@@ -41,7 +41,6 @@ const SelectionOverlay: React.FC = () => {
 
   useEffect(() => {
     const applyInitData = (data: OverlayInitData) => {
-      console.log('Overlay init data applied:', JSON.stringify(data.combinedBounds));
       setDisplays(data.displays);
       setCombinedBounds(data.combinedBounds);
     };
@@ -52,22 +51,26 @@ const SelectionOverlay: React.FC = () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = (window as any).__overlayInitData as OverlayInitData | undefined;
       if (data) {
-        console.log('Found __overlayInitData');
         applyInitData(data);
         return true;
       }
       return false;
     };
 
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let pollTimeout: ReturnType<typeof setTimeout> | null = null;
+
     if (!checkForInjectedData()) {
       // Data not ready yet, poll briefly
-      const timer = setInterval(() => {
-        if (checkForInjectedData()) {
-          clearInterval(timer);
+      pollTimer = setInterval(() => {
+        if (checkForInjectedData() && pollTimer) {
+          clearInterval(pollTimer);
         }
       }, 50);
       // Stop polling after 3 seconds
-      setTimeout(() => clearInterval(timer), 3000);
+      pollTimeout = setTimeout(() => {
+        if (pollTimer) clearInterval(pollTimer);
+      }, 3000);
     }
 
     // Also try IPC if electronAPI is available
@@ -93,6 +96,8 @@ const SelectionOverlay: React.FC = () => {
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      if (pollTimer) clearInterval(pollTimer);
+      if (pollTimeout) clearTimeout(pollTimeout);
     };
   }, []);
 
@@ -121,7 +126,6 @@ const SelectionOverlay: React.FC = () => {
   }, []);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
-    console.log('mouseUp fired, isSelecting:', isSelectingRef.current, 'startPoint:', startPointRef.current);
     if (!isSelectingRef.current || !startPointRef.current) return;
 
     // Always reset selecting state
@@ -136,18 +140,14 @@ const SelectionOverlay: React.FC = () => {
     const width = Math.abs(endPoint.x - sp.x);
     const height = Math.abs(endPoint.y - sp.y);
 
-    console.log('Selection:', { x, y, width, height }, 'combinedBounds:', cb);
-
     // Minimum selection size
     if (width < 10 || height < 10) {
-      console.log('Selection too small, ignoring');
       setStartPoint(null);
       setCurrentPoint(null);
       return;
     }
 
     if (!cb) {
-      console.log('ERROR: combinedBounds is null - init data not received');
       setStartPoint(null);
       setCurrentPoint(null);
       return;
@@ -185,14 +185,12 @@ const SelectionOverlay: React.FC = () => {
       displayId: display?.id || 0,
     };
 
-    console.log('Calling completeOverlay with bounds:', bounds);
     if (window.electronAPI) {
       window.electronAPI.completeOverlay(bounds);
     } else {
-      // Fallback: post message for main process to pick up via executeJavaScript polling
+      // Fallback: post result for main process to pick up via executeJavaScript polling
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).__overlayResult = bounds;
-      console.log('Set __overlayResult (no electronAPI)');
     }
   }, []);
 

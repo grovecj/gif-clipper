@@ -8,9 +8,13 @@ export interface UploadResult {
   cdnUrl: string;
 }
 
+const UPLOAD_TIMEOUT_MS = 30_000;
+
 export async function uploadGif(filePath: string, apiUrl: string): Promise<UploadResult> {
   const fileData = readFileSync(filePath);
-  const filename = path.basename(filePath);
+  // Sanitize filename to safe characters only
+  const rawName = path.basename(filePath);
+  const filename = rawName.replace(/[^a-zA-Z0-9._-]/g, '_');
 
   // Build multipart/form-data body manually since Node FormData
   // in Electron's main process may not support Blob/File from fs
@@ -33,13 +37,22 @@ export async function uploadGif(filePath: string, apiUrl: string): Promise<Uploa
   const uploadUrl = `${apiUrl.replace(/\/$/, '')}/api/gifs`;
   console.log(`Uploading GIF (${fileData.length} bytes) to ${uploadUrl}...`);
 
-  const response = await net.fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': `multipart/form-data; boundary=${boundary}`,
-    },
-    body,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await net.fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      },
+      body,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');
@@ -48,10 +61,15 @@ export async function uploadGif(filePath: string, apiUrl: string): Promise<Uploa
 
   const result = await response.json();
 
+  // Validate response contains required fields
+  if (!result || typeof result.id !== 'string' || typeof result.url !== 'string') {
+    throw new Error('Invalid response from server: missing id or url');
+  }
+
   console.log(`Upload successful: ${result.url}`);
   return {
     id: result.id,
     url: result.url,
-    cdnUrl: result.cdnUrl,
+    cdnUrl: result.cdnUrl || result.url,
   };
 }

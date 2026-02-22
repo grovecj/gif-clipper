@@ -12,9 +12,18 @@ export interface SelectionBounds {
   displayId: number;
 }
 
+interface OverlayInitData {
+  displays: {
+    id: number;
+    bounds: { x: number; y: number; width: number; height: number };
+    scaleFactor: number;
+  }[];
+  combinedBounds: { x: number; y: number; width: number; height: number };
+}
+
 let overlayWindow: BrowserWindow | null = null;
 let selectionResolver: ((bounds: SelectionBounds | null) => void) | null = null;
-let overlayInitData: { displays: { id: number; bounds: { x: number; y: number; width: number; height: number }; scaleFactor: number }[]; combinedBounds: { x: number; y: number; width: number; height: number } } | null = null;
+let overlayInitData: OverlayInitData | null = null;
 
 export const createOverlayWindow = (): BrowserWindow => {
   // Use the display where the cursor is currently located
@@ -48,8 +57,6 @@ export const createOverlayWindow = (): BrowserWindow => {
     },
   });
 
-  const preloadPath = path.join(__dirname, 'preload.js');
-  console.log('Overlay preload path:', preloadPath);
   console.log('Overlay window created, loading URL...');
 
   // Load the overlay page
@@ -78,6 +85,9 @@ export const createOverlayWindow = (): BrowserWindow => {
   });
 
   // Send display info to the overlay
+  let ipcFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+  let resultPoller: ReturnType<typeof setInterval> | null = null;
+
   overlayWindow.webContents.on('did-finish-load', () => {
     console.log('Overlay window loaded, sending init data');
 
@@ -85,7 +95,7 @@ export const createOverlayWindow = (): BrowserWindow => {
     // even if the preload/electronAPI isn't available
     const initDataJson = JSON.stringify(overlayInitData);
     overlayWindow?.webContents.executeJavaScript(
-      `window.__overlayInitData = ${initDataJson}; console.log('__overlayInitData injected');`
+      `window.__overlayInitData = ${initDataJson};`
     );
 
     overlayWindow?.setOpacity(0.5);
@@ -93,14 +103,14 @@ export const createOverlayWindow = (): BrowserWindow => {
     overlayWindow?.focus();
 
     // Also try IPC push with delay as a fallback
-    setTimeout(() => {
+    ipcFallbackTimer = setTimeout(() => {
       overlayWindow?.webContents.send('overlay:init', overlayInitData);
     }, 150);
 
     // Poll for __overlayResult set by renderer (fallback when electronAPI unavailable)
-    const resultPoller = setInterval(async () => {
+    resultPoller = setInterval(async () => {
       if (!overlayWindow) {
-        clearInterval(resultPoller);
+        if (resultPoller) clearInterval(resultPoller);
         return;
       }
       try {
@@ -108,8 +118,7 @@ export const createOverlayWindow = (): BrowserWindow => {
           `(() => { const r = window.__overlayResult; if (r !== undefined) { delete window.__overlayResult; return r; } return undefined; })()`
         );
         if (result !== undefined) {
-          clearInterval(resultPoller);
-          console.log('overlay:complete via polling:', result);
+          if (resultPoller) clearInterval(resultPoller);
           if (selectionResolver) {
             selectionResolver(result);
             selectionResolver = null;
@@ -118,12 +127,14 @@ export const createOverlayWindow = (): BrowserWindow => {
         }
       } catch {
         // Window may have been closed
-        clearInterval(resultPoller);
+        if (resultPoller) clearInterval(resultPoller);
       }
     }, 100);
   });
 
   overlayWindow.on('closed', () => {
+    if (ipcFallbackTimer) clearTimeout(ipcFallbackTimer);
+    if (resultPoller) clearInterval(resultPoller);
     overlayWindow = null;
     if (selectionResolver) {
       selectionResolver(null);
@@ -151,7 +162,6 @@ export const closeOverlay = (): void => {
 // IPC handlers for overlay
 export const registerOverlayIPC = (): void => {
   ipcMain.handle('overlay:complete', (_event, bounds: SelectionBounds | null) => {
-    console.log('overlay:complete received with bounds:', bounds);
     if (selectionResolver) {
       selectionResolver(bounds);
       selectionResolver = null;
@@ -165,9 +175,5 @@ export const registerOverlayIPC = (): void => {
       selectionResolver = null;
     }
     closeOverlay();
-  });
-
-  ipcMain.handle('overlay:getInit', () => {
-    return overlayInitData;
   });
 };

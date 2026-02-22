@@ -143,8 +143,11 @@ const startCaptureWorkflow = async (): Promise<void> => {
       console.log('Uploading GIF...');
       const result = await uploadGif(gifPath, apiUrl);
 
+      // Validate URL before using it
+      const isValidUrl = /^https?:\/\//i.test(result.url);
+
       // Copy URL to clipboard
-      if (store.get('upload.copyToClipboard', true)) {
+      if (store.get('upload.copyToClipboard', true) && isValidUrl) {
         clipboard.writeText(result.url);
       }
 
@@ -152,15 +155,17 @@ const startCaptureWorkflow = async (): Promise<void> => {
       if (store.get('upload.showNotification', true)) {
         new Notification({
           title: 'GIF Captured!',
-          body: store.get('upload.copyToClipboard', true)
+          body: store.get('upload.copyToClipboard', true) && isValidUrl
             ? 'URL copied to clipboard'
             : result.url,
         }).show();
       }
 
-      // Open in browser
-      if (store.get('upload.openInBrowser', false)) {
-        shell.openExternal(result.url);
+      // Open in browser (only allow http/https URLs)
+      if (store.get('upload.openInBrowser', false) && isValidUrl) {
+        shell.openExternal(result.url).catch((err) => {
+          console.error('Failed to open URL in browser:', err);
+        });
       }
 
       mainWindow?.webContents.send('capture:complete', result.url);

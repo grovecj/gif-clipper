@@ -16,18 +16,22 @@ const Countdown: React.FC = () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = (window as any).__countdownInitData as { duration: number } | undefined;
       if (data) {
-        console.log('Found __countdownInitData:', data.duration);
         setCount(data.duration);
         return true;
       }
       return false;
     };
 
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let pollTimeout: ReturnType<typeof setTimeout> | null = null;
+
     if (!checkForInjectedData()) {
-      const timer = setInterval(() => {
-        if (checkForInjectedData()) clearInterval(timer);
+      pollTimer = setInterval(() => {
+        if (checkForInjectedData() && pollTimer) clearInterval(pollTimer);
       }, 50);
-      setTimeout(() => clearInterval(timer), 3000);
+      pollTimeout = setTimeout(() => {
+        if (pollTimer) clearInterval(pollTimer);
+      }, 3000);
     }
 
     // Also try IPC if available
@@ -53,6 +57,8 @@ const Countdown: React.FC = () => {
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      if (pollTimer) clearInterval(pollTimer);
+      if (pollTimeout) clearTimeout(pollTimeout);
     };
   }, []);
 
