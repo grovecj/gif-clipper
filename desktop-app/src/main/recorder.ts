@@ -86,18 +86,18 @@ export function startRecording(options: RecordingOptions): Promise<string> {
       ffmpegProcess = null;
       currentRecordingPath = null;
 
-      if (outputPath) {
-        console.log(`ffmpeg recording finished (code ${code})`);
+      if (code === 0 && outputPath) {
+        console.log(`ffmpeg recording finished: ${outputPath}`);
         resolve(outputPath);
       } else {
-        reject(new Error(`Recording failed: ${stderr.slice(-500)}`));
+        reject(new Error(`Recording failed (code ${code}): ${stderr.slice(-500)}`));
       }
     });
 
     ffmpegProcess.on('error', (err) => {
       ffmpegProcess = null;
       currentRecordingPath = null;
-      reject(new Error(`Failed to start ffmpeg: ${err.message}. Is ffmpeg installed and on PATH?`));
+      reject(new Error(`Failed to start ffmpeg: ${err.message}`));
     });
   });
 }

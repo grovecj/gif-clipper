@@ -27,9 +27,29 @@ const SelectionOverlay: React.FC = () => {
   const [combinedBounds, setCombinedBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Use refs for values needed in mouseup to avoid stale closure issues
+  const isSelectingRef = useRef(false);
+  const startPointRef = useRef<{ x: number; y: number } | null>(null);
+  const combinedBoundsRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
+  const displaysRef = useRef<DisplayInfo[]>([]);
+
+  // Keep refs in sync with state
+  isSelectingRef.current = isSelecting;
+  startPointRef.current = startPoint;
+  combinedBoundsRef.current = combinedBounds;
+  displaysRef.current = displays;
+
   useEffect(() => {
+    console.log('SelectionOverlay mounted, electronAPI available:', !!window.electronAPI);
+
+    if (!window.electronAPI) {
+      console.error('window.electronAPI is undefined - preload script may not have loaded');
+      return;
+    }
+
     // Listen for initialization data from main process
     const handleInit = (_event: unknown, data: OverlayInitData) => {
+      console.log('OVERLAY INIT received:', data);
       setDisplays(data.displays);
       setCombinedBounds(data.combinedBounds);
     };
@@ -39,7 +59,7 @@ const SelectionOverlay: React.FC = () => {
     // Handle escape key
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        window.electronAPI.cancelOverlay();
+        window.electronAPI?.cancelOverlay();
       }
     };
 
@@ -61,48 +81,33 @@ const SelectionOverlay: React.FC = () => {
     return { x, y, width, height };
   }, [startPoint, currentPoint]);
 
-  const getDisplayForPoint = useCallback((x: number, y: number): DisplayInfo | null => {
-    if (!combinedBounds) return null;
-
-    // Convert screen coordinates to global coordinates
-    const globalX = x + combinedBounds.x;
-    const globalY = y + combinedBounds.y;
-
-    for (const display of displays) {
-      if (
-        globalX >= display.bounds.x &&
-        globalX < display.bounds.x + display.bounds.width &&
-        globalY >= display.bounds.y &&
-        globalY < display.bounds.y + display.bounds.height
-      ) {
-        return display;
-      }
-    }
-    return displays[0] || null;
-  }, [displays, combinedBounds]);
-
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
     setIsSelecting(true);
     setStartPoint({ x: e.clientX, y: e.clientY });
     setCurrentPoint({ x: e.clientX, y: e.clientY });
   }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isSelecting) {
+    if (isSelectingRef.current) {
       setCurrentPoint({ x: e.clientX, y: e.clientY });
     }
-  }, [isSelecting]);
+  }, []);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
-    if (!isSelecting || !startPoint || !combinedBounds) return;
+    if (!isSelectingRef.current || !startPointRef.current) return;
 
+    // Always reset selecting state
     setIsSelecting(false);
-    const endPoint = { x: e.clientX, y: e.clientY };
 
-    const x = Math.min(startPoint.x, endPoint.x);
-    const y = Math.min(startPoint.y, endPoint.y);
-    const width = Math.abs(endPoint.x - startPoint.x);
-    const height = Math.abs(endPoint.y - startPoint.y);
+    const sp = startPointRef.current;
+    const endPoint = { x: e.clientX, y: e.clientY };
+    const cb = combinedBoundsRef.current;
+
+    const x = Math.min(sp.x, endPoint.x);
+    const y = Math.min(sp.y, endPoint.y);
+    const width = Math.abs(endPoint.x - sp.x);
+    const height = Math.abs(endPoint.y - sp.y);
 
     // Minimum selection size
     if (width < 10 || height < 10) {
@@ -111,14 +116,36 @@ const SelectionOverlay: React.FC = () => {
       return;
     }
 
+    if (!cb) {
+      console.warn('combinedBounds not yet available, cannot complete selection');
+      setStartPoint(null);
+      setCurrentPoint(null);
+      return;
+    }
+
     // Convert to global screen coordinates
-    const globalX = x + combinedBounds.x;
-    const globalY = y + combinedBounds.y;
+    const globalX = x + cb.x;
+    const globalY = y + cb.y;
 
     // Find which display contains the center of the selection
     const centerX = x + width / 2;
     const centerY = y + height / 2;
-    const display = getDisplayForPoint(centerX, centerY);
+    const globalCenterX = centerX + cb.x;
+    const globalCenterY = centerY + cb.y;
+
+    let display: DisplayInfo | null = null;
+    for (const d of displaysRef.current) {
+      if (
+        globalCenterX >= d.bounds.x &&
+        globalCenterX < d.bounds.x + d.bounds.width &&
+        globalCenterY >= d.bounds.y &&
+        globalCenterY < d.bounds.y + d.bounds.height
+      ) {
+        display = d;
+        break;
+      }
+    }
+    if (!display) display = displaysRef.current[0] || null;
 
     const bounds: SelectionBounds = {
       x: globalX,
@@ -128,8 +155,8 @@ const SelectionOverlay: React.FC = () => {
       displayId: display?.id || 0,
     };
 
-    window.electronAPI.completeOverlay(bounds);
-  }, [isSelecting, startPoint, combinedBounds, getDisplayForPoint]);
+    window.electronAPI?.completeOverlay(bounds);
+  }, []);
 
   const selectionRect = getSelectionRect();
 
@@ -141,30 +168,6 @@ const SelectionOverlay: React.FC = () => {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
-      {/* Dark overlay with cutout for selection */}
-      <svg className="overlay-svg" width="100%" height="100%">
-        <defs>
-          <mask id="selection-mask">
-            <rect width="100%" height="100%" fill="white" />
-            {selectionRect && (
-              <rect
-                x={selectionRect.x}
-                y={selectionRect.y}
-                width={selectionRect.width}
-                height={selectionRect.height}
-                fill="black"
-              />
-            )}
-          </mask>
-        </defs>
-        <rect
-          width="100%"
-          height="100%"
-          fill="rgba(0, 0, 0, 0.5)"
-          mask="url(#selection-mask)"
-        />
-      </svg>
-
       {/* Selection border */}
       {selectionRect && selectionRect.width > 0 && selectionRect.height > 0 && (
         <>
@@ -185,7 +188,7 @@ const SelectionOverlay: React.FC = () => {
               top: selectionRect.y + selectionRect.height + 10,
             }}
           >
-            {selectionRect.width} × {selectionRect.height}
+            {selectionRect.width} &times; {selectionRect.height}
           </div>
         </>
       )}
