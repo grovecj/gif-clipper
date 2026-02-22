@@ -46,7 +46,7 @@ const defaultSettings: AppSettings = {
     apiUrl: 'https://gif.cartergrove.me',
     copyToClipboard: true,
     showNotification: true,
-    openInBrowser: false,
+    openInBrowser: true,
   },
 };
 
