@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, globalShortcut } from 'electron';
+import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, globalShortcut, clipboard, shell, Notification } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { createStore } from './store';
@@ -8,6 +8,7 @@ import { showCountdown } from './countdown';
 import { startRecording, stopRecording } from './recorder';
 import { encodeGif } from './encoder';
 import { showRecordingIndicator, closeRecordingIndicator } from './recording-indicator';
+import { uploadGif } from './uploader';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -103,10 +104,11 @@ const startCaptureWorkflow = async (): Promise<void> => {
     stopRecording();
   });
 
+  let videoPath: string;
   try {
     // Step 3: Recording
     console.log(`Starting recording at ${fps} fps, max ${maxDuration}s...`);
-    const videoPath = await startRecording({
+    videoPath = await startRecording({
       x: bounds.x,
       y: bounds.y,
       width: bounds.width,
@@ -115,24 +117,75 @@ const startCaptureWorkflow = async (): Promise<void> => {
       maxDuration,
     });
     console.log(`Recording saved: ${videoPath}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Recording failed:', message);
+    mainWindow?.webContents.send('capture:error', message);
+    return;
+  } finally {
+    // Close indicator and unregister stop key immediately after recording ends
+    closeRecordingIndicator();
+    if (globalShortcut.isRegistered(stopKey)) {
+      globalShortcut.unregister(stopKey);
+    }
+  }
 
+  // Steps 4 & 5 run in the background — no UI blocking
+  try {
     // Step 4: Encoding
     console.log('Encoding GIF...');
     const gifPath = await encodeGif(videoPath, fps);
     console.log(`GIF encoded: ${gifPath}`);
 
-    // Step 5: Upload (TODO: implement in issue #10)
-    // For now, notify with the local file path
-    mainWindow?.webContents.send('capture:complete', gifPath);
+    // Step 5: Upload to backend
+    const apiUrl = store.get('upload.apiUrl', 'https://gif.cartergrove.me');
+    try {
+      console.log('Uploading GIF...');
+      const result = await uploadGif(gifPath, apiUrl);
+
+      // Validate URL before using it
+      const isValidUrl = /^https?:\/\//i.test(result.url);
+
+      // Copy URL to clipboard
+      if (store.get('upload.copyToClipboard', true) && isValidUrl) {
+        clipboard.writeText(result.url);
+      }
+
+      // Show system notification
+      if (store.get('upload.showNotification', true)) {
+        new Notification({
+          title: 'GIF Captured!',
+          body: store.get('upload.copyToClipboard', true) && isValidUrl
+            ? 'URL copied to clipboard'
+            : result.url,
+        }).show();
+      }
+
+      // Open in browser (only allow http/https URLs)
+      if (store.get('upload.openInBrowser', false) && isValidUrl) {
+        shell.openExternal(result.url).catch((err) => {
+          console.error('Failed to open URL in browser:', err);
+        });
+      }
+
+      mainWindow?.webContents.send('capture:complete', result.url);
+    } catch (uploadErr) {
+      const uploadMsg = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
+      console.error('Upload failed, saving locally:', uploadMsg);
+
+      // Fallback: copy local path to clipboard
+      clipboard.writeText(gifPath);
+      new Notification({
+        title: 'GIF Saved Locally',
+        body: 'Upload failed. File path copied to clipboard.',
+      }).show();
+
+      mainWindow?.webContents.send('capture:complete', gifPath);
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Capture failed:', message);
     mainWindow?.webContents.send('capture:error', message);
-  } finally {
-    closeRecordingIndicator();
-    if (globalShortcut.isRegistered(stopKey)) {
-      globalShortcut.unregister(stopKey);
-    }
   }
 };
 

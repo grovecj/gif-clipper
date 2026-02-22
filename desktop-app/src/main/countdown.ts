@@ -51,9 +51,41 @@ export const showCountdown = (options: CountdownOptions): void => {
     );
   }
 
+  // Forward renderer console logs to main process terminal
+  countdownWindow.webContents.on('console-message', (_event, _level, message) => {
+    console.log('[countdown-renderer]', message);
+  });
+
   // Send countdown config when ready
   countdownWindow.webContents.on('did-finish-load', () => {
+    // Inject data directly via executeJavaScript (preload may not be available)
+    countdownWindow?.webContents.executeJavaScript(
+      `window.__countdownInitData = ${JSON.stringify({ duration })}; console.log('__countdownInitData injected');`
+    );
     countdownWindow?.webContents.send('countdown:init', { duration });
+
+    // Poll for result from renderer
+    const resultPoller = setInterval(async () => {
+      if (!countdownWindow) {
+        clearInterval(resultPoller);
+        return;
+      }
+      try {
+        const result = await countdownWindow.webContents.executeJavaScript(
+          `(() => { const r = window.__countdownResult; if (r !== undefined) { delete window.__countdownResult; return r; } return undefined; })()`
+        );
+        if (result !== undefined) {
+          clearInterval(resultPoller);
+          if (result === 'complete') {
+            handleComplete();
+          } else {
+            handleCancel();
+          }
+        }
+      } catch {
+        clearInterval(resultPoller);
+      }
+    }, 100);
   });
 
   // Handle countdown completion

@@ -12,8 +12,18 @@ export interface SelectionBounds {
   displayId: number;
 }
 
+interface OverlayInitData {
+  displays: {
+    id: number;
+    bounds: { x: number; y: number; width: number; height: number };
+    scaleFactor: number;
+  }[];
+  combinedBounds: { x: number; y: number; width: number; height: number };
+}
+
 let overlayWindow: BrowserWindow | null = null;
 let selectionResolver: ((bounds: SelectionBounds | null) => void) | null = null;
+let overlayInitData: OverlayInitData | null = null;
 
 export const createOverlayWindow = (): BrowserWindow => {
   // Use the display where the cursor is currently located
@@ -59,25 +69,72 @@ export const createOverlayWindow = (): BrowserWindow => {
     );
   }
 
+  // Store init data so the renderer can request it
+  overlayInitData = {
+    displays: [{
+      id: activeDisplay.id,
+      bounds: activeDisplay.bounds,
+      scaleFactor: activeDisplay.scaleFactor,
+    }],
+    combinedBounds: displayBounds,
+  };
+
+  // Forward renderer console logs to main process terminal
+  overlayWindow.webContents.on('console-message', (_event, _level, message) => {
+    console.log('[overlay-renderer]', message);
+  });
+
   // Send display info to the overlay
+  let ipcFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+  let resultPoller: ReturnType<typeof setInterval> | null = null;
+
   overlayWindow.webContents.on('did-finish-load', () => {
     console.log('Overlay window loaded, sending init data');
 
-    overlayWindow?.webContents.send('overlay:init', {
-      displays: [{
-        id: activeDisplay.id,
-        bounds: activeDisplay.bounds,
-        scaleFactor: activeDisplay.scaleFactor,
-      }],
-      combinedBounds: displayBounds,
-    });
+    // Inject init data directly into the window object — this works
+    // even if the preload/electronAPI isn't available
+    const initDataJson = JSON.stringify(overlayInitData);
+    overlayWindow?.webContents.executeJavaScript(
+      `window.__overlayInitData = ${initDataJson};`
+    );
 
     overlayWindow?.setOpacity(0.5);
     overlayWindow?.show();
     overlayWindow?.focus();
+
+    // Also try IPC push with delay as a fallback
+    ipcFallbackTimer = setTimeout(() => {
+      overlayWindow?.webContents.send('overlay:init', overlayInitData);
+    }, 150);
+
+    // Poll for __overlayResult set by renderer (fallback when electronAPI unavailable)
+    resultPoller = setInterval(async () => {
+      if (!overlayWindow) {
+        if (resultPoller) clearInterval(resultPoller);
+        return;
+      }
+      try {
+        const result = await overlayWindow.webContents.executeJavaScript(
+          `(() => { const r = window.__overlayResult; if (r !== undefined) { delete window.__overlayResult; return r; } return undefined; })()`
+        );
+        if (result !== undefined) {
+          if (resultPoller) clearInterval(resultPoller);
+          if (selectionResolver) {
+            selectionResolver(result);
+            selectionResolver = null;
+          }
+          closeOverlay();
+        }
+      } catch {
+        // Window may have been closed
+        if (resultPoller) clearInterval(resultPoller);
+      }
+    }, 100);
   });
 
   overlayWindow.on('closed', () => {
+    if (ipcFallbackTimer) clearTimeout(ipcFallbackTimer);
+    if (resultPoller) clearInterval(resultPoller);
     overlayWindow = null;
     if (selectionResolver) {
       selectionResolver(null);

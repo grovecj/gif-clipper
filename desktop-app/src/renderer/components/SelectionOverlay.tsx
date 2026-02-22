@@ -40,22 +40,55 @@ const SelectionOverlay: React.FC = () => {
   displaysRef.current = displays;
 
   useEffect(() => {
-    if (!window.electronAPI) {
-      return;
-    }
-
-    // Listen for initialization data from main process
-    const handleInit = (_event: unknown, data: OverlayInitData) => {
+    const applyInitData = (data: OverlayInitData) => {
       setDisplays(data.displays);
       setCombinedBounds(data.combinedBounds);
     };
 
-    window.electronAPI.onOverlayInit(handleInit);
+    // Poll for init data injected via executeJavaScript from main process
+    // This works regardless of whether the preload/electronAPI is available
+    const checkForInjectedData = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = (window as any).__overlayInitData as OverlayInitData | undefined;
+      if (data) {
+        applyInitData(data);
+        return true;
+      }
+      return false;
+    };
+
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let pollTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    if (!checkForInjectedData()) {
+      // Data not ready yet, poll briefly
+      pollTimer = setInterval(() => {
+        if (checkForInjectedData() && pollTimer) {
+          clearInterval(pollTimer);
+        }
+      }, 50);
+      // Stop polling after 3 seconds
+      pollTimeout = setTimeout(() => {
+        if (pollTimer) clearInterval(pollTimer);
+      }, 3000);
+    }
+
+    // Also try IPC if electronAPI is available
+    if (window.electronAPI) {
+      window.electronAPI.onOverlayInit((_event: unknown, data: OverlayInitData) => {
+        applyInitData(data);
+      });
+    }
 
     // Handle escape key
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        window.electronAPI?.cancelOverlay();
+        if (window.electronAPI) {
+          window.electronAPI.cancelOverlay();
+        } else {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (window as any).__overlayResult = null;
+        }
       }
     };
 
@@ -63,6 +96,8 @@ const SelectionOverlay: React.FC = () => {
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      if (pollTimer) clearInterval(pollTimer);
+      if (pollTimeout) clearTimeout(pollTimeout);
     };
   }, []);
 
@@ -150,7 +185,13 @@ const SelectionOverlay: React.FC = () => {
       displayId: display?.id || 0,
     };
 
-    window.electronAPI?.completeOverlay(bounds);
+    if (window.electronAPI) {
+      window.electronAPI.completeOverlay(bounds);
+    } else {
+      // Fallback: post result for main process to pick up via executeJavaScript polling
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).__overlayResult = bounds;
+    }
   }, []);
 
   const selectionRect = getSelectionRect();

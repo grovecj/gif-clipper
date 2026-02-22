@@ -5,6 +5,11 @@ const RecordingIndicator: React.FC = () => {
   const [elapsed, setElapsed] = useState(0);
   const [startTime] = useState(Date.now());
 
+  // Make body transparent so the transparent BrowserWindow works
+  useEffect(() => {
+    document.body.style.backgroundColor = 'transparent';
+  }, []);
+
   // Timer
   useEffect(() => {
     const interval = setInterval(() => {
