@@ -193,17 +193,9 @@ resource "digitalocean_app" "gif_clipper" {
   }
 }
 
-# Update database firewall to allow gif-clipper app
-resource "digitalocean_database_firewall" "gif_clipper" {
-  cluster_id = data.digitalocean_database_cluster.shared_postgres.id
-
-  # Note: This will need to coexist with mlb-stats firewall rules
-  # Consider managing all firewall rules in one place
-  rule {
-    type  = "app"
-    value = digitalocean_app.gif_clipper.id
-  }
-}
+# Database firewall is managed centrally in the mlb-stats terraform,
+# which owns the shared cluster. Set gif_clipper_app_id there to
+# grant this app database access.
 
 # DNS Record for API custom domain
 resource "digitalocean_record" "api_cname" {

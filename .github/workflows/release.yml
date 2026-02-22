@@ -1,0 +1,86 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop-app/**'
+      - '.github/workflows/release.yml'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop-app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop-app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows installer
+        run: npm run make
+
+      - name: Get version from package.json
+        id: version
+        shell: bash
+        run: echo "version=$(node -p 'require(\"./package.json\").version')" >> "$GITHUB_OUTPUT"
+
+      - name: Find installer
+        id: installer
+        shell: bash
+        run: |
+          INSTALLER=$(find out/make/squirrel.windows -name "*.exe" -path "*Setup*" | head -1)
+          echo "path=$INSTALLER" >> "$GITHUB_OUTPUT"
+          BASENAME=$(basename "$INSTALLER" | tr ' ' '.')
+          echo "name=$BASENAME" >> "$GITHUB_OUTPUT"
+
+      - name: Check if release exists
+        id: check_release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="v${{ steps.version.outputs.version }}"
+          if gh release view "$VERSION" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create release
+        if: steps.check_release.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          VERSION="v${{ steps.version.outputs.version }}"
+          gh release create "$VERSION" \
+            --title "Gif Clipper $VERSION" \
+            --generate-notes \
+            "${{ steps.installer.outputs.path }}#${{ steps.installer.outputs.name }}"
+
+      - name: Update existing release
+        if: steps.check_release.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          VERSION="v${{ steps.version.outputs.version }}"
+          # Delete old exe asset if present, then upload new one
+          ASSET_NAME="${{ steps.installer.outputs.name }}"
+          ASSET_ID=$(gh api "repos/${{ github.repository }}/releases/tags/$VERSION" \
+            --jq ".assets[] | select(.name == \"$ASSET_NAME\") | .id" 2>/dev/null || true)
+          if [ -n "$ASSET_ID" ]; then
+            gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$ASSET_ID"
+          fi
+          gh release upload "$VERSION" \
+            "${{ steps.installer.outputs.path }}#${{ steps.installer.outputs.name }}"

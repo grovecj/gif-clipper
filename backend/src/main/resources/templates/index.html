@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gif Clipper — Screen to GIF in one keystroke</title>
+
+    <meta name="description" content="Free, open-source screen capture to GIF app for Windows and macOS. Select a region, hit record, share instantly.">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Gif Clipper">
+    <meta property="og:description" content="Screen to GIF in one keystroke. Free for Windows &amp; macOS.">
+    <meta property="og:site_name" content="Gif Clipper">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/home.css">
+</head>
+<body>
+
+<!-- Grain overlay -->
+<div class="grain" aria-hidden="true"></div>
+
+<!-- Navigation -->
+<nav class="nav">
+    <a href="/" class="nav-logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+            <line x1="7" y1="2" x2="7" y2="22"/>
+            <line x1="17" y1="2" x2="17" y2="22"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <line x1="2" y1="7" x2="7" y2="7"/>
+            <line x1="2" y1="17" x2="7" y2="17"/>
+            <line x1="17" y1="17" x2="22" y2="17"/>
+            <line x1="17" y1="7" x2="22" y2="7"/>
+        </svg>
+        <span>Gif Clipper</span>
+    </a>
+    <div class="nav-links">
+        <a href="#download" class="nav-link">Download</a>
+        <a href="#trending" class="nav-link">Trending</a>
+        <a href="https://github.com/grovecj/gif-clipper" class="nav-link" target="_blank" rel="noopener">GitHub</a>
+    </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="hero-badge">Free &amp; Open Source</div>
+    <h1 class="hero-title">
+        Screen to GIF<br>
+        <span class="hero-accent">in one keystroke.</span>
+    </h1>
+    <p class="hero-subtitle">
+        Select a region. Hit record. Get a shareable GIF link in seconds.<br>
+        No watermarks. No accounts. Just&nbsp;<code class="hero-hotkey">Ctrl+Shift+G</code>.
+    </p>
+    <div class="hero-actions" id="download">
+        <a href="/download/windows" class="btn-download btn-download--primary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="9" y1="21" x2="9" y2="9"/>
+            </svg>
+            Download for Windows
+        </a>
+        <a class="btn-download btn-download--secondary btn-download--disabled" aria-disabled="true" title="macOS support coming soon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06z"/>
+                <path d="M10 2c1 .5 2 2 2 5"/>
+            </svg>
+            macOS — Coming Soon
+        </a>
+    </div>
+    <div class="hero-platforms">
+        <span>Windows 10+</span>
+        <span class="hero-dot">·</span>
+        <span>~30 MB</span>
+        <span class="hero-dot">·</span>
+        <span>No sign-up required</span>
+    </div>
+</section>
+
+<!-- How it works -->
+<section class="steps">
+    <div class="steps-grid">
+        <div class="step">
+            <div class="step-number">1</div>
+            <h3 class="step-title">Select</h3>
+            <p class="step-desc">Drag to select any region of your screen</p>
+        </div>
+        <div class="step">
+            <div class="step-number">2</div>
+            <h3 class="step-title">Record</h3>
+            <p class="step-desc">Capture up to 30 seconds of screen activity</p>
+        </div>
+        <div class="step">
+            <div class="step-number">3</div>
+            <h3 class="step-title">Share</h3>
+            <p class="step-desc">Get a shareable link copied to your clipboard</p>
+        </div>
+    </div>
+</section>
+
+<!-- Trending GIFs -->
+<section class="gallery" id="trending" th:if="${not #lists.isEmpty(trendingGifs)}">
+    <div class="gallery-header">
+        <h2 class="gallery-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/>
+                <polyline points="17,6 23,6 23,12"/>
+            </svg>
+            Trending
+        </h2>
+        <span class="gallery-label">New &amp; popular</span>
+    </div>
+    <div class="gif-grid">
+        <a th:each="entry : ${trendingGifs}"
+           th:href="@{'/' + ${entry.gif.id}}"
+           class="gif-card">
+            <img th:src="${entry.cdnUrl}"
+                 th:alt="${entry.gif.originalFilename ?: 'GIF'}"
+                 loading="lazy"
+                 class="gif-card-img">
+            <div class="gif-card-overlay">
+                <span class="gif-card-views">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <span th:text="${entry.gif.viewCount}">42</span>
+                </span>
+            </div>
+        </a>
+    </div>
+</section>
+
+<!-- Top GIFs -->
+<section class="gallery" id="top" th:if="${not #lists.isEmpty(topGifs)}">
+    <div class="gallery-header">
+        <h2 class="gallery-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+            </svg>
+            Top GIFs
+        </h2>
+        <span class="gallery-label">Most viewed of all time</span>
+    </div>
+    <div class="gif-grid">
+        <a th:each="entry : ${topGifs}"
+           th:href="@{'/' + ${entry.gif.id}}"
+           class="gif-card">
+            <img th:src="${entry.cdnUrl}"
+                 th:alt="${entry.gif.originalFilename ?: 'GIF'}"
+                 loading="lazy"
+                 class="gif-card-img">
+            <div class="gif-card-overlay">
+                <span class="gif-card-views">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <span th:text="${entry.gif.viewCount}">1,203</span>
+                </span>
+            </div>
+        </a>
+    </div>
+</section>
+
+<!-- Empty state -->
+<section class="empty-state" th:if="${#lists.isEmpty(trendingGifs) and #lists.isEmpty(topGifs)}">
+    <div class="empty-state-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+            <line x1="7" y1="2" x2="7" y2="22"/>
+            <line x1="17" y1="2" x2="17" y2="22"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+        </svg>
+    </div>
+    <p class="empty-state-text">No GIFs yet. Download the app and create the first one!</p>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-inner">
+        <span class="footer-logo">Gif Clipper</span>
+        <span class="footer-sep">·</span>
+        <a href="https://github.com/grovecj/gif-clipper" target="_blank" rel="noopener">Source on GitHub</a>
+    </div>
+</footer>
+
+</body>
+</html>
