@@ -203,7 +203,7 @@ resource "digitalocean_app" "gif_clipper" {
 
       env {
         key   = "APP_BASE_URL"
-        value = var.api_custom_domain != "" ? "https://${var.api_custom_domain}" : "https://${digitalocean_app.gif_clipper.default_ingress}"
+        value = "https://${var.api_custom_domain}"
         type  = "GENERAL"
       }
     }
