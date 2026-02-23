@@ -146,6 +146,18 @@ resource "digitalocean_app" "gif_clipper" {
         type  = "SECRET"
       }
 
+      env {
+        key   = "DATABASE_DRIVER"
+        value = "org.postgresql.Driver"
+        type  = "GENERAL"
+      }
+
+      env {
+        key   = "HIBERNATE_DIALECT"
+        value = "org.hibernate.dialect.PostgreSQLDialect"
+        type  = "GENERAL"
+      }
+
       # Spaces configuration
       env {
         key   = "DO_SPACES_ENDPOINT"
