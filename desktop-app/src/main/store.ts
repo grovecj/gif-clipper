@@ -16,6 +16,7 @@ export interface AppSettings {
   encoding: {
     quality: 'low' | 'medium' | 'high';
     colors: number;
+    maxWidth: number;
   };
   upload: {
     apiUrl: string;
@@ -40,7 +41,8 @@ const defaultSettings: AppSettings = {
   },
   encoding: {
     quality: 'high',
-    colors: 256,
+    colors: 128,
+    maxWidth: 800,
   },
   upload: {
     apiUrl: 'https://gif.cartergrove.me',
@@ -80,6 +82,7 @@ export const createStore = (): Store<AppSettings> => {
         properties: {
           quality: { type: 'string', enum: ['low', 'medium', 'high'] },
           colors: { type: 'number', minimum: 16, maximum: 256 },
+          maxWidth: { type: 'number', minimum: 320, maximum: 3840 },
         },
       },
       upload: {

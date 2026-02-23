@@ -149,8 +149,10 @@ const startCaptureWorkflow = async (): Promise<void> => {
   // Steps 4 & 5 run in the background — no UI blocking
   try {
     // Step 4: Encoding
-    console.log('Encoding GIF...');
-    const gifPath = await encodeGif(videoPath, fps);
+    const colors = store.get('encoding.colors', 128);
+    const maxWidth = store.get('encoding.maxWidth', 800);
+    console.log(`Encoding GIF (colors=${colors}, maxWidth=${maxWidth})...`);
+    const gifPath = await encodeGif(videoPath, fps, { colors, maxWidth });
     console.log(`GIF encoded: ${gifPath}`);
 
     // Step 5: Upload to backend
