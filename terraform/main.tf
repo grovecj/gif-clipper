@@ -200,6 +200,12 @@ resource "digitalocean_app" "gif_clipper" {
         value = "production"
         type  = "GENERAL"
       }
+
+      env {
+        key   = "APP_BASE_URL"
+        value = var.api_custom_domain != "" ? "https://${var.api_custom_domain}" : "https://${digitalocean_app.gif_clipper.default_ingress}"
+        type  = "GENERAL"
+      }
     }
   }
 }
