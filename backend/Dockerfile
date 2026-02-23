@@ -3,14 +3,15 @@ FROM gradle:8.12-jdk21 AS build
 WORKDIR /app
 
 # Copy gradle files first for better caching
-COPY build.gradle.kts settings.gradle.kts gradle.properties ./
-COPY gradle ./gradle
+# Note: build context is the repo root on DO App Platform
+COPY backend/build.gradle.kts backend/settings.gradle.kts backend/gradle.properties ./
+COPY backend/gradle ./gradle
 
 # Download dependencies (cached unless build files change)
 RUN gradle dependencies --no-daemon
 
 # Copy source code
-COPY src ./src
+COPY backend/src ./src
 
 # Build the application
 RUN gradle bootJar --no-daemon

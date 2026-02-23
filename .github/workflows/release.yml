@@ -7,6 +7,9 @@ on:
       - 'desktop-app/**'
       - '.github/workflows/release.yml'
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -32,7 +35,9 @@ jobs:
       - name: Get version from package.json
         id: version
         shell: bash
-        run: echo "version=$(node -p 'require(\"./package.json\").version')" >> "$GITHUB_OUTPUT"
+        run: |
+          VER=$(node -e "process.stdout.write(require('./package.json').version)")
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
 
       - name: Find installer
         id: installer
