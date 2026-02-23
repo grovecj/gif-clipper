@@ -2,16 +2,30 @@ import { spawn } from 'child_process';
 import { unlink } from 'node:fs/promises';
 import { getFfmpegPath } from './ffmpeg-path';
 
-export function encodeGif(inputPath: string, fps: number): Promise<string> {
+export interface EncodingOptions {
+  colors: number;
+  maxWidth: number;
+}
+
+export function encodeGif(inputPath: string, fps: number, options: EncodingOptions): Promise<string> {
   return new Promise((resolve, reject) => {
     const outputPath = inputPath.replace(/\.[^.]+$/, '.gif');
+    const { colors, maxWidth } = options;
 
-    // Use split filter for optimal GIF quality:
-    // 1. palettegen analyzes all frames for best color palette
-    // 2. paletteuse applies that palette for high-quality output
+    // Build filter chain:
+    // 1. fps — resample to target frame rate
+    // 2. scale — downscale to maxWidth (never upscale), lanczos for quality
+    // 3. palettegen — generate optimal palette with limited colors
+    // 4. paletteuse — apply palette with bayer dithering (compresses well in GIF)
+    const filters = [
+      `fps=${fps}`,
+      `scale='min(iw,${maxWidth})':-1:flags=lanczos`,
+      `split[s0][s1];[s0]palettegen=max_colors=${colors}[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5`,
+    ].join(',');
+
     const args = [
       '-i', inputPath,
-      '-vf', `fps=${fps},split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse`,
+      '-vf', filters,
       '-loop', '0',
       '-y',
       outputPath,
