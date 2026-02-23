@@ -159,12 +159,14 @@ const startCaptureWorkflow = async (): Promise<void> => {
       console.log('Uploading GIF...');
       const result = await uploadGif(gifPath, apiUrl);
 
-      // Validate URL before using it
+      // Validate URLs before using them
       const isValidUrl = /^https?:\/\//i.test(result.url);
+      const cdnUrl = result.cdnUrl || result.url;
+      const isValidCdnUrl = /^https?:\/\//i.test(cdnUrl);
 
-      // Copy URL to clipboard
-      if (store.get('upload.copyToClipboard', true) && isValidUrl) {
-        clipboard.writeText(result.url);
+      // Copy CDN URL to clipboard (direct link to the GIF file)
+      if (store.get('upload.copyToClipboard', true) && isValidCdnUrl) {
+        clipboard.writeText(cdnUrl);
       }
 
       // Show system notification
